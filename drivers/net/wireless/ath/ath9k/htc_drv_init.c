@@ -242,7 +242,7 @@ static unsigned int ath9k_regread(void *hw_priv, u32 reg_offset)
 	r = ath9k_wmi_cmd(priv->wmi, WMI_REG_READ_CMDID,
 			  (u8 *) &reg, sizeof(reg),
 			  (u8 *) &val, sizeof(val),
-			  100);
+			  HZ);
 	if (unlikely(r)) {
 		ath_dbg(common, WMI, "REGISTER READ FAILED: (0x%04x, %d)\n",
 			reg_offset, r);
@@ -269,7 +269,7 @@ static void ath9k_multi_regread(void *hw_priv, u32 *addr,
 	ret = ath9k_wmi_cmd(priv->wmi, WMI_REG_READ_CMDID,
 			   (u8 *)tmpaddr , sizeof(u32) * count,
 			   (u8 *)tmpval, sizeof(u32) * count,
-			   100);
+			   HZ);
 	if (unlikely(ret)) {
 		ath_dbg(common, WMI,
 			"Multiple REGISTER READ FAILED (count: %d)\n", count);
@@ -290,7 +290,7 @@ static void ath9k_regwrite_multi(struct ath_common *common)
 			  (u8 *) &priv->wmi->multi_write,
 			  sizeof(struct register_write) * priv->wmi->multi_write_idx,
 			  (u8 *) &rsp_status, sizeof(rsp_status),
-			  100);
+			  HZ);
 	if (unlikely(r)) {
 		ath_dbg(common, WMI,
 			"REGISTER WRITE FAILED, multi len: %d\n",
@@ -313,7 +313,7 @@ static void ath9k_regwrite_single(void *hw_priv, u32 val, u32 reg_offset)
 	r = ath9k_wmi_cmd(priv->wmi, WMI_REG_WRITE_CMDID,
 			  (u8 *) &buf, sizeof(buf),
 			  (u8 *) &val, sizeof(val),
-			  100);
+			  HZ);
 	if (unlikely(r)) {
 		ath_dbg(common, WMI, "REGISTER WRITE FAILED:(0x%04x, %d)\n",
 			reg_offset, r);
@@ -407,7 +407,7 @@ static void ath9k_reg_rmw_buffer(void *hw_priv,
 			  (u8 *) &priv->wmi->multi_rmw,
 			  sizeof(struct register_write) * priv->wmi->multi_rmw_idx,
 			  (u8 *) &rsp_status, sizeof(rsp_status),
-			  100);
+			  HZ);
 		if (unlikely(r)) {
 			ath_dbg(common, WMI,
 				"REGISTER RMW FAILED, multi len: %d\n",
@@ -439,7 +439,7 @@ static void ath9k_reg_rmw_flush(void *hw_priv)
 			  (u8 *) &priv->wmi->multi_rmw,
 			  sizeof(struct register_rmw) * priv->wmi->multi_rmw_idx,
 			  (u8 *) &rsp_status, sizeof(rsp_status),
-			  100);
+			  HZ);
 		if (unlikely(r)) {
 			ath_dbg(common, WMI,
 				"REGISTER RMW FAILED, multi len: %d\n",
@@ -480,7 +480,7 @@ static u32 ath9k_reg_rmw_single(void *hw_priv,
 	ret = ath9k_wmi_cmd(priv->wmi, WMI_REG_RMW_CMDID,
 			  (u8 *) &buf, sizeof(buf),
 			  (u8 *) &buf_ret, sizeof(buf_ret),
-			  100);
+			  HZ);
 	if (unlikely(ret)) {
 		ath_dbg(common, WMI, "REGISTER RMW FAILED:(0x%04x, %d)\n",
 			reg_offset, ret);
