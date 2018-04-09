@@ -27,6 +27,15 @@ config 9P_FS_POSIX_ACL
 
 	  If you don't know what Access Control Lists are, say N
 
+
+config 9P_FS_ROOT_TCP
+	bool "9P root file system over TCP"
+	depends on 9P_FS
+	help
+	  Support mounting a root 9P file system over a TCP network connection.
+
+	  If unsure, say N.
+
 endif
 
 

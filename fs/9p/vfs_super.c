@@ -29,6 +29,7 @@
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/file.h>
+#include <linux/root_dev.h>
 #include <linux/stat.h>
 #include <linux/string.h>
 #include <linux/inet.h>
@@ -106,6 +107,64 @@ v9fs_fill_super(struct super_block *sb, struct v9fs_session_info *v9ses,
 	return 0;
 }
 
+#ifdef CONFIG_9P_FS_ROOT_TCP
+#include <net/ipconfig.h>
+
+struct v9fs_rootfs_fid_info {
+	struct v9fs_session_info *v9ses;
+	const char *root_addr;
+	void *data;
+
+	struct p9_fid *fid;
+	struct completion done;
+};
+
+static int v9fs_rootfs_fid_init(void *data)
+{
+	struct v9fs_rootfs_fid_info *info = data;
+	info->fid = v9fs_session_init(info->v9ses, info->root_addr, info->data);
+	complete(&info->done);
+	return 0;
+}
+
+static bool v9fs_rootdev_addr(const char *dev_name, char *root_addr)
+{
+	struct block_device *bdev = lookup_bdev(dev_name);
+	bool root_ok;
+	if (!bdev)
+		return false;
+	if ((root_ok = (bdev->bd_dev == Root_NFS)))
+		sprintf(root_addr, "%pI4", &root_server_addr);
+	bdput(bdev);
+	return root_ok;
+}
+
+static struct p9_fid *v9fs_rootfs_fid(struct v9fs_session_info *v9ses,
+				      const char *dev_name, void *data)
+{
+	char root_addr[16];
+	struct v9fs_rootfs_fid_info info = {v9ses, root_addr, data};
+	struct task_struct *t;
+
+	if (!v9fs_rootdev_addr(dev_name, root_addr))
+		return ERR_PTR(-EINVAL);
+
+	/* need kthread, but mount_root()'s task was created before kthreadd */
+	init_completion(&info.done);
+	t = kthread_run(v9fs_rootfs_fid_init, &info, "9p-rootfs");
+	wait_for_completion(&info.done);
+	kthread_stop(t);
+
+	return info.fid;
+}
+#else
+static struct p9_fid *v9fs_rootfs_fid(struct v9fs_session_info *v9ses,
+				      const char *dev_name, void *data)
+{
+	return ERR_PTR(-EINVAL);
+}
+#endif
+
 /**
  * v9fs_mount - mount a superblock
  * @fs_type: file system type
@@ -133,6 +192,8 @@ static struct dentry *v9fs_mount(struct file_system_type *fs_type, int flags,
 		return ERR_PTR(-ENOMEM);
 
 	fid = v9fs_session_init(v9ses, dev_name, data);
+	if (IS_ERR(fid) && PTR_ERR(fid) == -EINVAL)
+		fid = v9fs_rootfs_fid(v9ses, dev_name, data);
 	if (IS_ERR(fid)) {
 		retval = PTR_ERR(fid);
 		goto free_session;
